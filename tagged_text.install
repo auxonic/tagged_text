@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ * Installation functions for insitu_field_folder module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function insitu_field_folder_field_schema($field) { 
+  
+  $columns = array(
+    'value' => array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => FALSE,
+    ),
+  );
+  // Return array that contains.
+  return array(                 
+    'columns' => $columns,
+    'indexes' => array(
+      'value' => array('value'),
+    ),
+  );
+  
+  
+}

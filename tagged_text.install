@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Installation functions for insitu_field_folder module.
+ * Installation functions for tagged_text module.
  */
 
 /**
  * Implements hook_field_schema().
  */
-function insitu_field_folder_field_schema($field) { 
+function tagged_text_field_schema($field) {
   
   $columns = array(
     'value' => array(

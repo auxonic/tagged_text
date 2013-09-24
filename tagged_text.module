@@ -2,7 +2,7 @@
 
 /**
  * @file
- * inSitu Field Folder
+ * Tagged Text Field Module
  */
 
 /**
@@ -10,51 +10,64 @@
  * 
  * This field provides a select list for choosing a folder path to be saved as field value.
  */
-function insitu_field_folder_field_info() {
-  return array(
-    'insitu_field_folder' => array(
-      'label' => t('Folder'),
-      'description' => t('The folder that contains the folders that the package to point to.'),
-      'instance_settings' => array('field_folder_root' => '', 'field_folder_index' => ''),
-      'default_widget' => 'insitu_field_folder_folder_select',
-      'default_formatter' => 'insitu_field_folder_default',
-    )
+function tagged_text_field_info() {
+  $fields = array();
+
+  $fields['tagged_text'] = array(
+    'label' => t('Tagged textfield'),
+    'description' => t('Creates a taxonomy tagged textfield for use in entities'),
+    //'settings' => array(),
+    'instance_settings' => array(
+      'tag_vocabulary' => '',
+      'text_format' => ''
+    ),
+    'default_widget' => 'tagged_text_select_text',
+    'default_formatter' => 'tagged_text_tag_text',
   );
+  
+  return $fields;
 }
 
 /**
  * Implements hook_field_widget_info().
  */
-function insitu_field_folder_field_widget_info() {  
-  return array(   
-    'insitu_field_folder_folder_select' => array(  
-      'label' => t('Folder list'),  
-      // Our widget will work with a field in DB under the name textf.
-      'field types' => array('insitu_field_folder'),  
-    ), 
-  ); 
+function tagged_text_field_widget_info() {
+  $widgets = array();
+
+  $widgets['tagged_text_select_text'] = array(
+    'label' => t('Tagged textfield'),
+    'field types' => array('tagged_text'),
+    'settings' => array(
+      'rows' => 3,
+    ),
+  );
+
+  return $widgets;
+
 } 
 
 /**
  * Implements hook_field_formatter_info().
+ *
+ * https://api.drupal.org/api/drupal/modules!field!field.api.php/function/hook_field_widget_info/7
  */
-function insitu_field_folder_field_formatter_info() { 
+function tagged_text_field_formatter_info() {
   return array(
-    'insitu_field_folder_default' => array(
-      'label' => t('Default'),
-      'field types' => array('insitu_field_folder',),
+    'tagged_text_tag_only' => array(
+      'label' => t('Tag only'),
+      'description' => t('Displays only the renderd taxonomy'),
+      //'settings' => array('taxonomy_mode' => 'text'),
+      'field types' => array('tagged_text',),
     ),
-    'insitu_field_folder_link' => array(
-      'label' => t('Link'),
-      'field types' => array('insitu_field_folder',),
+    'tagged_text_tag_text' => array(
+      'label' => t('Tag & text'),
+      'description' => t('Displays both the rendered taxonomy and the textfield'),
+      'field types' => array('tagged_text',),
     ),
-    'insitu_field_folder_plain_text_full_uri' => array(
-      'label' => t('Full URI (Plain Text)'),
-      'field types' => array('insitu_field_folder',),
-    ),
-    'insitu_field_folder_plain_text_folder' => array(
-      'label' => t('Folder path (Plain Text)'),
-      'field types' => array('insitu_field_folder',),
+    'tagged_text_text_only' => array(
+      'label' => t('Text only'),
+      'description' => t('Displays only the renderd textfield'),
+      'field types' => array('tagged_text',),
     ),
   );
 }
@@ -62,14 +75,15 @@ function insitu_field_folder_field_formatter_info() {
 /**
  * Implements hook_field_formatter_view().
  */
-function insitu_field_folder_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+function tagged_text_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   global $base_path, $base_url;
+  $settings = $display['settings'];
   $element = array();
-  $index = $instance['settings']['field_folder_index'];
+  $index = $settings['field_folder_index'];
   $index = $index ? "/{$index}" : NULL;
   
   switch ($display['type']) {
-    case 'insitu_field_folder_default':
+    case 'tagged_text_tag_only':
       foreach ($items as $delta => $item) {
         // If no match was found in allowed values, fall back to the key.
         $output = field_filter_xss($item['value']);
@@ -77,27 +91,17 @@ function insitu_field_folder_field_formatter_view($entity_type, $entity, $field,
       }
       break;
 
-    case 'insitu_field_folder_link':
+    case 'tagged_text_tag_text':
       foreach ($items as $delta => $item) {
-        $value = field_filter_xss($item['value']);
-        $public_folder_uri = file_stream_wrapper_get_instance_by_uri($value)->getExternalUrl() . $index;
-        $link = l($public_folder_uri, $public_folder_uri);
-        $element[$delta] = array('#markup' => $link);
+        $output = field_filter_xss($item['value']);
+        $element[$delta] = array('#markup' => $output);
       }
       break;
     
-    case 'insitu_field_folder_plain_text_full_uri':
+    case 'tagged_text_text_only':
       foreach ($items as $delta => $item) {
-        $value = field_filter_xss($item['value']);
-        $public_folder_uri = file_stream_wrapper_get_instance_by_uri($value)->getExternalUrl() . $index;
-        $element[$delta] = array('#markup' => $public_folder_uri);
-      }
-      break;
-    
-    case 'insitu_field_folder_plain_text_folder':
-      foreach ($items as $delta => $item) {
-        $value = field_filter_xss($item['value']);
-        $element[$delta] = array('#markup' => $value);
+        $output = field_filter_xss($item['value']);
+        $element[$delta] = array('#markup' => $output);
       }
       break;
   }
@@ -108,7 +112,7 @@ function insitu_field_folder_field_formatter_view($entity_type, $entity, $field,
 /**
  * Implements hook_field_is_empty().
  */
-function insitu_field_folder_field_is_empty($item, $field) {
+function tagged_text_field_is_empty($item, $field) {
   if (empty($item['value']) && (string) $item['value'] !== '0') {
     return TRUE;
   }
@@ -118,27 +122,34 @@ function insitu_field_folder_field_is_empty($item, $field) {
 /**
  * Implements hook_field_settings_form().
  */
-function insitu_field_folder_field_instance_settings_form($field, $instance) {
+function tagged_text_field_instance_settings_form($field, $instance) {
   global $base_url, $base_path;
-  
+  /*      'tag_vocabulary' => '',
+      'text_format' => ''*/
   switch ($field['type']) {
-    case 'insitu_field_folder':
-      $public_folder = file_stream_wrapper_get_instance_by_uri('public://')->getDirectoryPath();
-      $root_path = isset($instance['settings']['field_folder_root']) ? $instance['settings']['field_folder_root'] : 'html_package';
-      $form['field_folder_root'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Root folder to show'),
-        '#default_value' => $root_path,
-        '#description' => t("This path will be relative to the public file directory<br />
-        Current value: {$root_path}<br />
-        Full path: {$base_url}{$base_path}{$public_folder}/{$root_path}/<br />
-        "),
+    case 'tagged_text':
+      $vocabularies = taxonomy_get_vocabularies();
+      $vocab_array = array();
+      foreach ($vocabularies as &$item) {
+        $vocab_array[$item->vid] = $item->name;
+      }
+      $form['tag_vocabulary'] = array(
+        '#type' => 'select',
+        '#title' => t('Tag Vocabulary'),
+        '#options' => $vocab_array,
+        //'#default_value' => $root_path,
+        '#description' => t("This taxonomy will be used to tag the textfield entries."),
       );
-      $form['field_folder_index'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Name of the index file'),
-        '#default_value' => isset($instance['settings']['field_folder_index']) ? $instance['settings']['field_folder_index'] : NULL,
-        '#description' => t("<em>Ex. index.html</em>"),
+      $formats = filter_formats();
+      $format_array = array();
+      foreach ($formats as &$item) {
+        $format_array[$item->format] = $item->name;
+      }
+      $form['text_format'] = array(
+        '#type' => 'select',
+        '#title' => t('Textfield format'),
+        '#options' => $format_array,
+        '#description' => t("Default text format for the text field"),
       );
       break;
       
@@ -149,52 +160,34 @@ function insitu_field_folder_field_instance_settings_form($field, $instance) {
 /**
  * Implements hook_field_settings_form().
  */
-function insitu_field_folder_field_settings_form($field, $instance, $has_data) {
+function tagged_text_field_settings_form($field, $instance, $has_data) {
   //$settings = $field['settings'];
-  
 }
 
 /**
  * Implements hook_field_widget_form().
  */
-function insitu_field_folder_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  global $base_path;
+function tagged_text_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  //global $base_path;
+  $settings = $instance['settings'];
   
   // Setting switch into parameters that wll work widget types that are in module.
   switch ($instance['widget']['type']) { 
       // If the selected widget is 'folder_list'.
-      case 'insitu_field_folder_folder_select': 
-        // Then we build a select list using the form API and populated with the list of folders.
-        
-        $root_folder = isset($instance['settings']['field_folder_root']) ? $instance['settings']['field_folder_root'] : 'html_package';
-        $root_folder = trim($root_folder) ? $root_folder : 'html_package';
-        $public_folder = file_stream_wrapper_get_instance_by_uri('public://')->getDirectoryPath() . "/" . $root_folder . "/";
-        
-        if($root_folder) {
-          $dir = "public://{$root_folder}";
+      case 'tagged_text_select_text':
+        // Build the Taxonomy select box
+        $terms = taxonomy_get_tree($settings['tag_vocabulary']);
+        $terms_select = array();
+        foreach ($terms as $term) {
+          $terms_select[$term->tid] = $term->name;
         }
-        
-        $mask = '/.*/';
-        $dir_options = array(
-          'recurse' => FALSE,
-        );
 
-        $packages = file_scan_directory($dir, $mask, $dir_options);
-        $options = array();
-        if(count($packages)) {
-          foreach($packages as $uri => $package) {
-            $options[$uri] = $package->name;
-          }
-          asort($options);
-        }
-        
-        $element['value'] = array( 
-            // Element type 'textfield'.
+        $element['tid'] = array(
             '#type' => 'select', 
             // Heading given in element settings.
             '#title' => $element['#title'], 
             // Widget description is given in element settings.
-            '#description' => t("To see a package in this list, you must upload its folder to the server at the location: <strong>%path</strong><br />", array('%path' => $public_folder)) . $element['#description'],
+            '#description' => $element['#description'],
             '#default_value' => (isset($items['0']['value']) ? $items['0']['value'] : NULL), 
             // If element is required it will be indicated in settings of the very element.
             '#required' => $element['#required'], 
@@ -204,7 +197,13 @@ function insitu_field_folder_field_widget_form(&$form, &$form_state, $field, $in
             // Line that we'll need for the output.
             '#delta' => $delta,
             // We assign the options here
-            '#options' => array('' => t('None')) + $options,
+            '#options' => $terms_select,
+        );
+        $element['value'] = array(
+          '#type' => 'text_format',
+          '#title' => t('Value'),
+          '#format' => $settings['text_format'],
+          //'#weight' => 0,
         );
       break;
   }

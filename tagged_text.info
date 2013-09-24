@@ -1,21 +1,18 @@
-name = inSitu Field Folder
-description = This field provides a select list for choosing a folder path to be saved as field value.
-dependencies[] = insitu
-dependencies[] = field
-package = inSitu
+name = Tagged Text Field
+description = This field provides a taxonomy select list and text field as one field.
 core = 7.x
+dependencies[] = ctools
+package = Fields
 version = "7.x-1.0"
 php = 5.2
 
 ; Always available CSS
 ; stylesheets[all][] = css/style.css
 
-;;dependencies[] = ctools
-
 ; Includes
 ;files[] = includes/xxx/yyy.inc
 
 ; Modules
-files[] = insitu_field_folder.module
-files[] = insitu_field_folder.install
+files[] = tagged_text.module
+files[] = tagged_text.install
 

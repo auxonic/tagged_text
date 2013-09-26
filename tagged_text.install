@@ -11,9 +11,21 @@
 function tagged_text_field_schema($field) {
   
   $columns = array(
+    'tid' => array(
+      'type' => 'int',
+      'not null' => FALSE
+    ),
     'value' => array(
+      'description' => t('Formatted text field'),
+      'type' => 'text',
+      'size' => 'big',
+      'not null' => FALSE,
+    ),
+    'format' => array(
+      'description' => 'Text format for the text field',
       'type' => 'varchar',
       'length' => 255,
+      'default' => '',
       'not null' => FALSE,
     ),
   );
@@ -21,7 +33,7 @@ function tagged_text_field_schema($field) {
   return array(                 
     'columns' => $columns,
     'indexes' => array(
-      'value' => array('value'),
+      'tid' => array('tid'),
     ),
   );
   

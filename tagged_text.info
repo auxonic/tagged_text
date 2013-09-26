@@ -7,7 +7,7 @@ version = "7.x-1.0"
 php = 5.2
 
 ; Always available CSS
-; stylesheets[all][] = css/style.css
+stylesheets[all][] = tagged_text.css
 
 ; Includes
 ;files[] = includes/xxx/yyy.inc

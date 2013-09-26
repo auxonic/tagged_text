@@ -5,6 +5,7 @@
  * Tagged Text Field Module
  */
 
+
 /**
  * Implements hook_field_info().
  * 
@@ -19,7 +20,8 @@ function tagged_text_field_info() {
     //'settings' => array(),
     'instance_settings' => array(
       'tag_vocabulary' => '',
-      'text_format' => ''
+      'title_taxonomy' => '',
+      'title_textfield' => '',
     ),
     'default_widget' => 'tagged_text_select_text',
     'default_formatter' => 'tagged_text_tag_text',
@@ -79,35 +81,28 @@ function tagged_text_field_formatter_view($entity_type, $entity, $field, $instan
   global $base_path, $base_url;
   $settings = $display['settings'];
   $element = array();
-  $index = $settings['field_folder_index'];
-  $index = $index ? "/{$index}" : NULL;
   
-  switch ($display['type']) {
-    case 'tagged_text_tag_only':
-      foreach ($items as $delta => $item) {
-        // If no match was found in allowed values, fall back to the key.
-        $output = field_filter_xss($item['value']);
-        $element[$delta] = array('#markup' => $output);
-      }
-      break;
+  foreach ($items as $delta => $item) {
+    $tag = '';
+    $text = '';
 
-    case 'tagged_text_tag_text':
-      foreach ($items as $delta => $item) {
-        $output = field_filter_xss($item['value']);
-        $element[$delta] = array('#markup' => $output);
-      }
-      break;
-    
-    case 'tagged_text_text_only':
-      foreach ($items as $delta => $item) {
-        $output = field_filter_xss($item['value']);
-        $element[$delta] = array('#markup' => $output);
-      }
-      break;
+    if (in_array($display['type'], array('tagged_text_tag_only', 'tagged_text_tag_text'))) {
+        $term = taxonomy_term_load($item['tid']);
+        $tag = $term->name;
+        $tag = '<div class="tagged-text-term">'.check_plain($tag).'</div>';
+    }
+    if (in_array($display['type'], array('tagged_text_tag_text', 'tagged_text_text_only'))) {
+        $text =  check_markup($item['value'], $item['format'], $langcode);
+        $text = '<div class="tagged-text-text">'.$text.'</div>';
+    }
+    $element[$delta] = array(
+      '#markup' => '<div class="'.drupal_html_class($display['type']).'">'.$tag.$text.'</div>',
+    );
   }
 
   return $element;
 }
+
 
 /**
  * Implements hook_field_is_empty().
@@ -123,9 +118,6 @@ function tagged_text_field_is_empty($item, $field) {
  * Implements hook_field_settings_form().
  */
 function tagged_text_field_instance_settings_form($field, $instance) {
-  global $base_url, $base_path;
-  /*      'tag_vocabulary' => '',
-      'text_format' => ''*/
   switch ($field['type']) {
     case 'tagged_text':
       $vocabularies = taxonomy_get_vocabularies();
@@ -137,19 +129,20 @@ function tagged_text_field_instance_settings_form($field, $instance) {
         '#type' => 'select',
         '#title' => t('Tag Vocabulary'),
         '#options' => $vocab_array,
-        //'#default_value' => $root_path,
+        '#default_value' => $instance['settings']['tag_vocabulary'],
         '#description' => t("This taxonomy will be used to tag the textfield entries."),
       );
-      $formats = filter_formats();
-      $format_array = array();
-      foreach ($formats as &$item) {
-        $format_array[$item->format] = $item->name;
-      }
-      $form['text_format'] = array(
-        '#type' => 'select',
-        '#title' => t('Textfield format'),
-        '#options' => $format_array,
-        '#description' => t("Default text format for the text field"),
+      $form['title_taxonomy'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Taxonomy Title'),
+        '#default_value' => empty($instance['settings']['title_taxonomy']) ? t('Tag') : $instance['settings']['title_taxonomy'],
+        '#description' => t("This text will be the header for the Taxonomy. You may leave this blank."),
+      );
+      $form['title_textfield'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Textfield Title'),
+        '#default_value' => empty($instance['settings']['title_textfield']) ? t('Details') : $instance['settings']['title_textfield'],
+        '#description' => t("This text will be the header of the textfield.  You may leave this blank."),
       );
       break;
       
@@ -169,43 +162,74 @@ function tagged_text_field_settings_form($field, $instance, $has_data) {
  */
 function tagged_text_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   //global $base_path;
-  $settings = $instance['settings'];
   
   // Setting switch into parameters that wll work widget types that are in module.
   switch ($instance['widget']['type']) { 
       // If the selected widget is 'folder_list'.
       case 'tagged_text_select_text':
         // Build the Taxonomy select box
-        $terms = taxonomy_get_tree($settings['tag_vocabulary']);
+        //kpr($instance);
+        $terms = taxonomy_get_tree($instance['settings']['tag_vocabulary']);
         $terms_select = array();
         foreach ($terms as $term) {
           $terms_select[$term->tid] = $term->name;
         }
-
+        //kpr($terms);
+        //kpr($items);
+        
         $element['tid'] = array(
             '#type' => 'select', 
             // Heading given in element settings.
-            '#title' => $element['#title'], 
+            //'#title' => $element['#title'],
             // Widget description is given in element settings.
-            '#description' => $element['#description'],
-            '#default_value' => (isset($items['0']['value']) ? $items['0']['value'] : NULL), 
+            //'#description' => $element['#description'],
+            '#default_value' => (isset($items[$delta]['tid']) ? $items[$delta]['tid'] : NULL),
             // If element is required it will be indicated in settings of the very element.
             '#required' => $element['#required'], 
             // Element location – 
             // If it's indicated, value should be used, if not, value is 0.
-            '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+            '#weight' => -1,
             // Line that we'll need for the output.
-            '#delta' => $delta,
+            //'#delta' => $delta,
             // We assign the options here
             '#options' => $terms_select,
+            '#prefix' => '<div class="tagged-text-admin">', //style="float: left; margin-right: 10px;"
+            '#suffix' => '</div>',
         );
-        $element['value'] = array(
-          '#type' => 'text_format',
-          '#title' => t('Value'),
-          '#format' => $settings['text_format'],
-          //'#weight' => 0,
+        $element += array(
+          '#type' => 'text_format', //'text_format' or 'textarea' or 'textfield'
+          //'#title' => t('Value'),
+          '#description' => $element['#description'],
+          '#default_value' => isset($items[$delta]['value']) ? $items[$delta]['value'] : NULL,
+          '#rows' => $instance['widget']['settings']['rows'],
+          '#format' => isset($items[$delta]['format']) ? $items[$delta]['format'] : NULL,
+          '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+          '#delta' => $delta,
         );
+        //kpr($instance);
+        if (!empty($instance['settings']['title_taxonomy'])) {
+          $element['tid']['#title'] = $instance['settings']['title_taxonomy'];
+        }
+        if (!empty($instance['settings']['title_textfield'])) {
+          $element['#title'] = $instance['settings']['title_textfield'];
+        }
+        $element['#prefix'] = "<div>"; //<div style=\"font-weight: bold;\" class=\"field-title\">{$instance['settings']['field_title']}</div>";
+        $element['#suffix'] = "</div>";
       break;
   }
   return $element;
 }
+
+/**
+ * Implements hook_field_presave().
+ */
+function tagged_text_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  if ($field['type'] == 'tagged_text') {
+    //dsm($entity); // node object being saved
+    //dsm($field); // field config values, includes columns, module and type
+    //dsm($instance); // field instance config (for this node type), bundle and default value
+    //dsm($items); // $delta keyed list of entries for this save
+
+  }
+}
+
